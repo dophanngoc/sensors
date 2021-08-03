@@ -1,0 +1,135 @@
+#!/usr/bin/env bash
+
+scale_A=4
+scale_G=4
+scale_M=16
+
+I2C_ADDR_AG=0x6A
+I2C_ADDR_M=0x1C
+#Gyros
+CTRL_REG1_G=0x10 #0xC0
+CTRL_REG4=0x1E   #0x38
+CTRL_REG2_G=0x11
+CTRL_REG3_G=0x12
+
+OUT_X_L_G=0x18
+OUT_X_H_G=0x19
+OUT_Y_L_G=0x1A
+OUT_Y_H_G=0x1B
+OUT_Z_L_G=0x1C
+OUT_Z_H_G=0x1D
+#Acceler
+CTRL_REG6_XL=0x20 #0x00;dual-mode
+CTRL_REG5_XL=0x1F #0x38
+CTRL_REG7_XL=0x21
+
+OUT_X_L_XL=0x28
+OUT_X_H_XL=0x29
+OUT_Y_L_XL=0x2A
+OUT_Y_H_XL=0x2B
+OUT_Z_L_XL=0x2C
+OUT_Z_H_XL=0x2D
+#Magnetic
+CTRL_REG1_M=0x20 #0x1C
+CTRL_REG2_M=0x21 
+CTRL_REG3_M=0x22
+CTRL_REG4_M=0x23
+CTRL_REG5_M=0x24
+
+OUT_X_L_M=0x28
+OUT_X_H_M=0x29
+OUT_Y_L_M=0x2A
+OUT_Y_H_M=0x2B
+OUT_Z_L_M=0x2C
+OUT_Z_H_M=0x2D
+
+init_sens()
+{
+        i2cset -y 1 $I2C_ADDR_AG $CTRL_REG1_G 0xC0
+        i2cset -y 1 $I2C_ADDR_AG $CTRL_REG2_G 0x00
+        i2cset -y 1 $I2C_ADDR_AG $CTRL_REG3_G 0x00
+        i2cset -y 1 $I2C_ADDR_AG $CTRL_REG4 0x38
+
+        i2cset -y 1 $I2C_ADDR_AG $CTRL_REG6_XL 0x00
+        i2cset -y 1 $I2C_ADDR_AG $CTRL_REG5_XL 0x38
+        i2cset -y 1 $I2C_ADDR_AG $CTRL_REG7_XL 0x00
+
+        i2cset -y 1 $I2C_ADDR_M $CTRL_REG1_M 0x1C
+        i2cset -y 1 $I2C_ADDR_M $CTRL_REG2_M 0x00
+        i2cset -y 1 $I2C_ADDR_M $CTRL_REG3_M 0x00
+        i2cset -y 1 $I2C_ADDR_M $CTRL_REG4_M 0x00
+        i2cset -y 1 $I2C_ADDR_M $CTRL_REG5_M 0x00
+}
+
+data_read_Acce()
+{
+        Ax_raw=$(i2cget -y 1 $I2C_ADDR_AG $OUT_X_L_XL w)
+        Ay_raw=$(i2cget -y 1 $I2C_ADDR_AG $OUT_Y_L_XL w)
+        Az_raw=$(i2cget -y 1 $I2C_ADDR_AG $OUT_Z_L_XL w)
+
+        if [ $(($Ax_raw)) -gt 32767 ]; then
+                Ax_raw=$(((($Ax_raw)) - 65536))
+        fi
+        if [ $(($Ay_raw)) -gt 32767 ]; then
+                Ay_raw=$(((($Ay_raw)) - 65536))
+        fi
+        if [ $(($Az_raw)) -gt 32767 ]; then
+                Az_raw=$(((($Az_raw)) - 65536))    
+        fi
+        Ax=$(($Ax_raw*$scale_A/1000))
+        Ay=$(($Ay_raw*$scale_A/1000))
+        Az=$(($Az_raw*$scale_A/1000))
+
+        printf "Acce: Ax:$Ax;Ay:$Ay;Az:$Az\n"
+}
+
+data_read_Gyro()
+{
+        Gx_raw=$(i2cget -y 1 $I2C_ADDR_AG $OUT_X_L_G w)
+        Gy_raw=$(i2cget -y 1 $I2C_ADDR_AG $OUT_Y_L_G w)
+        Gz_raw=$(i2cget -y 1 $I2C_ADDR_AG $OUT_Z_L_G w)
+
+        if [ $(($Gx_raw)) -gt 32767 ]; then
+                Gx_raw=$(((($Gx_raw)) - 65536))
+        fi
+        if [ $(($Gy_raw)) -gt 32767 ]; then
+                Gy_raw=$(((($Gy_raw)) - 65536))
+        fi
+        if [ $(($Az_raw)) -gt 32767 ]; then
+                Gz_raw=$(((($Gz_raw)) - 65536))    
+        fi
+        Gx=$(($Gx_raw*$scale_A/1000))
+        Gy=$(($Gy_raw*$scale_A/1000))
+        Gz=$(($Gz_raw*$scale_A/1000))
+
+        printf "Gyro: Gx:$Gx;Gy:$Gy;Gz:$Gz\n"
+}
+data_read_Mag()
+{
+        Mx_raw=$(i2cget -y 1 $I2C_ADDR_M $OUT_X_L_M w)
+        My_raw=$(i2cget -y 1 $I2C_ADDR_M $OUT_Y_L_M w)
+        Mz_raw=$(i2cget -y 1 $I2C_ADDR_M $OUT_Z_L_M w)
+
+        if [ $(($Mx_raw)) -gt 32767 ]; then
+                Mx_raw=$(((($Mx_raw)) - 65536))
+        fi
+        if [ $(($My_raw)) -gt 32767 ]; then
+                My_raw=$(((($My_raw)) - 65536))
+        fi
+        if [ $(($Mz_raw)) -gt 32767 ]; then
+                Mz_raw=$(((($Mz_raw)) - 65536))
+        fi
+        Mx=$(($Mx_raw*scale_M/1000))
+        My=$(($My_raw*scale_M/1000))
+        Mz=$(($Mz_raw*scale_M/1000))
+        printf "Magn: Mx:$Mx;My:$My;Mz:$Mz\n"
+}
+#init_sens
+while true
+do
+        data_read_Acce
+        data_read_Mag
+        data_read_Gyro
+        sleep 0.1
+done
+
