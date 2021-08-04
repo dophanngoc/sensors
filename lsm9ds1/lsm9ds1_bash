@@ -80,7 +80,8 @@ function data_read_Acce()
         Ay=$(($Ay_raw*$scale_A/1000))
         Az=$(($Az_raw*$scale_A/1000))
 
-        printf "Acce: Ax:$Ax;Ay:$Ay;Az:$Az\n"
+        #printf "Acce: Ax:$Ax;Ay:$Ay;Az:$Az\n"
+	echo "$Ax" "$Ay" "$Az"
 }
 
 function data_read_Gyro()
@@ -102,9 +103,10 @@ function data_read_Gyro()
         Gy=$(($Gy_raw*$scale_A/1000))
         Gz=$(($Gz_raw*$scale_A/1000))
 
-        printf "Gyro: Gx:$Gx;Gy:$Gy;Gz:$Gz\n"
+        #printf "Gyro: Gx:$Gx;Gy:$Gy;Gz:$Gz\n"
+	echo "$Gx" "$Gy" "$Gz"
 }
-function data_read_Mag()
+function data_read_Magn()
 {
         Mx_raw=$(i2cget -y 1 $I2C_ADDR_M $OUT_X_L_M w)
         My_raw=$(i2cget -y 1 $I2C_ADDR_M $OUT_Y_L_M w)
@@ -122,14 +124,36 @@ function data_read_Mag()
         Mx=$(($Mx_raw*scale_M/1000))
         My=$(($My_raw*scale_M/1000))
         Mz=$(($Mz_raw*scale_M/1000))
-        printf "Magn: Mx:$Mx;My:$My;Mz:$Mz\n"
+        #printf "Magn: Mx:$Mx;My:$My;Mz:$Mz\n"
+	echo "$Mx" "$My" "$Mz"
 }
+
 #init_sens
+
+read ax ay az < <(data_read_Acce)
+read mx my mz < <(data_read_Magn)
+
+declare -a a_prev=($ax $ay $az)
+declare -a m_prev=($mx $my $mz)
+
 while true
 do
-        data_read_Acce
-        data_read_Mag
-        data_read_Gyro
+	read ax ay az < <(data_read_Acce)
+	read mx my mz < <(data_read_Magn)
+	#fall_detect $ax $ay $az $mx $my $mz
+	echo "Accel"
+	echo ${a_prev[*]}
+	echo "Magt"
+	echo ${m_prev[*]}
+	if [ $(($ax - ${a_prev[0]})) -gt 50 ] || [ $(($ay - ${a_prev[1]})) -gt 50 ] \
+		|| [ $(($az - ${a_prev[2]})) -gt 50 ]; then
+
+		if [ $(($mx - ${m_prev[0]})) -gt 15 ] || [ $(($my - ${m_prev[1]})) -gt 15 ] \
+			|| [ $(($mz - ${m_prev[2]})) -gt 15 ]; then
+			echo "SOS! SOS! SOS!i\n"
+
+		fi
+	fi
         sleep 0.1
 done
 
